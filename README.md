@@ -831,3 +831,161 @@ val text = with(StringBuilder()) {
     toString() // retourne le résultat
 }
 ```
+
+## 12) Destructuration (Pair, data class, Map.Entry)
+
+Idée clé: Kotlin offre la destructuration via componentN sur Pair/Triple, data classes et les entrées de Map. En Java 8 on extrait manuellement; Java 21 apporte les record patterns.
+
+### Java 8
+```java
+// package com.ps.java8.s12;
+
+import java.util.AbstractMap;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+
+/**
+ * Java 8 ne supporte pas nativement la destructuration.
+ * On extrait donc manuellement via des getters/indices.
+ */
+public class Destructuring {
+
+    // Petit Pair minimaliste pour la démonstration (pas de dépendance externe)
+    public static final class Pair<A, B> {
+        private final A first;
+        private final B second;
+        public Pair(A first, B second) { this.first = first; this.second = second; }
+        public A getFirst() { return first; }
+        public B getSecond() { return second; }
+        @Override public String toString() { return "(" + first + ", " + second + ")"; }
+    }
+
+    public static Pair<Integer, Integer> compute() {
+        return new Pair<>(21, 21);
+    }
+
+    public static void main(String[] args) {
+        // 1) Simuler la "destructuration" d'un Pair
+        Pair<Integer, Integer> p = compute();
+        Integer x = p.getFirst();
+        Integer y = p.getSecond();
+        System.out.println("x=" + x + ", y=" + y);
+
+        // 2) Avec une classe classique
+        Person person = new Person("Alice", 30);
+        String name = person.getName();
+        int age = person.getAge();
+        System.out.println(name + " a " + age + " ans");
+
+        // 3) Sur des Map.Entry
+        List<Map.Entry<String, Integer>> entries = Arrays.asList(
+                new AbstractMap.SimpleEntry<>("kotlin", 3),
+                new AbstractMap.SimpleEntry<>("java", 2)
+        );
+        for (Map.Entry<String, Integer> e : entries) {
+            String word = e.getKey();
+            Integer count = e.getValue();
+            System.out.println(word + " → " + count);
+        }
+    }
+
+    public static final class Person {
+        private final String name;
+        private final int age;
+        public Person(String name, int age) { this.name = name; this.age = age; }
+        public String getName() { return name; }
+        public int getAge() { return age; }
+    }
+}
+```
+
+### Java 21
+```java
+// package com.ps.java21.s12;
+
+/**
+ * Java 21 apporte les record patterns permettant la "destructuration"
+ * de records via instanceof/switch. Cela reste plus verbeux que Kotlin,
+ * mais plus expressif que Java 8.
+ */
+public class Destructuring21 {
+
+    public static record Pair<A, B>(A first, B second) { }
+    public static record Person(String name, int age) { }
+
+    public static Pair<Integer, Integer> compute() { return new Pair<>(21, 21); }
+
+    public static void main(String[] args) {
+        Object obj = compute();
+        if (obj instanceof Pair(var x, var y)) {
+            System.out.println("x=" + x + ", y=" + y);
+        }
+
+        Object o2 = new Person("Alice", 30);
+        switch (o2) {
+            case Person(String name, int age) -> System.out.println(name + " a " + age + " ans");
+            default -> System.out.println("autre");
+        }
+    }
+}
+```
+
+### Kotlin idiomatique
+```kotlin
+// package com.ps.kotlin.s12
+
+// Exemple de destructuration en Kotlin
+// - Pair et Triple (via componentN)
+// - data class (componentN générés automatiquement)
+// - Entries de Map
+// - Ignorer des composants avec _
+
+data class Person(val name: String, val age: Int)
+
+data class HttpResult(val code: Int, val body: String?)
+
+fun compute(): Pair<Int, Int> = 21 to 21
+
+fun httpCall(ok: Boolean): HttpResult = if (ok) HttpResult(200, "{...}") else HttpResult(500, null)
+
+fun main() {
+    // 1) Pair
+    val (x, y) = compute() // destructuration de Pair
+    println("x=$x, y=$y")
+
+    // 2) data class
+    val p = Person("Alice", 30)
+    val (n, a) = p // component1 -> name, component2 -> age
+    println("$n a $a ans")
+
+    // 3) Map.Entry
+    val frequencies = mapOf("kotlin" to 3, "java" to 2)
+    for ((word, count) in frequencies) {
+        println("$word → $count")
+    }
+
+    // 4) Ignorer un composant avec _
+    val (_, justAge) = p
+    println("only age = $justAge")
+
+    // 5) Destructurer dans un let pour limiter la portée
+    httpCall(ok = true).let { (code, body) ->
+        println("HTTP $code, body size = ${body?.length ?: 0}")
+    }
+}
+```
+
+### Diagramme
+```
++-----------------------+
+|      Destructuring    |
++-----------------------+
+| Pair, data class, Map |
++-----------------------+
+```
+
+### Notes idiomatiques
+- Kotlin génère automatiquement componentN pour les data classes, ce qui alimente la destructuration.
+- Préférer la destructuration dans des scopes limités (for, let) pour garder la lisibilité.
+- En Java 21, les record patterns simplifient l’extraction mais restent plus verbeux que Kotlin.

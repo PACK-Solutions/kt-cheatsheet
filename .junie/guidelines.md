@@ -102,7 +102,7 @@ fun main() { /* … */ }
   3. Vérifiez la compilation.
 
 ## 8) Contribution avec Junie (prompts utiles)
-- « Ajoute une nouvelle section sNN sur <thème>, en fournissant Java 8, Java 21 et un exemple Kotlin idiomatique exécutable. »
+- « Ajoute une nouvelle section sNN sur <thème>, en fournissant des exemples Java 8, Java 21 et un exemple Kotlin idiomatique exécutable. »
 - « Crée les classes Kotlin/Java correspondantes aux snippets du README, dans les bons packages sNN. »
 - « Mets à jour le README avec les fences et la numérotation cohérente. »
 - « Vérifie la compilation Gradle et corrige les packages. »
