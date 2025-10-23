@@ -989,3 +989,412 @@ fun main() {
 - Kotlin génère automatiquement componentN pour les data classes, ce qui alimente la destructuration.
 - Préférer la destructuration dans des scopes limités (for, let) pour garder la lisibilité.
 - En Java 21, les record patterns simplifient l’extraction mais restent plus verbeux que Kotlin.
+
+
+## 13) when: contrôle de flux expressif
+
+Idée clé: `when` est une expression exhaustive en Kotlin, permet des correspondances par valeur, plage et type avec smart casts. En Java 8 on enchaîne if/else; Java 21 rapproche avec switch expressions et pattern matching.
+
+### Java 8
+```java
+// package com.ps.java8.s13;
+public class WhenLike {
+    interface Shape {}
+    static final class Circle implements Shape { final double radius; Circle(double r){ this.radius=r; } }
+    static final class Rectangle implements Shape { final double width, height; Rectangle(double w, double h){ this.width=w; this.height=h; } }
+    static final class Unknown implements Shape { final String label; Unknown(String l){ this.label=l; } }
+
+    static double area(Shape s) {
+        if (s instanceof Circle) {
+            Circle c = (Circle) s;
+            return Math.PI * c.radius * c.radius;
+        } else if (s instanceof Rectangle) {
+            Rectangle r = (Rectangle) s;
+            return r.width * r.height;
+        } else if (s instanceof Unknown) {
+            return Double.NaN;
+        } else {
+            throw new IllegalArgumentException("shape inconnu: " + s);
+        }
+    }
+
+    static String classifyScore(int score) {
+        if (score >= 90 && score <= 100) return "A";
+        if (score >= 75 && score <= 89) return "B";
+        if (score >= 60 && score <= 74) return "C";
+        if (score >= 0 && score <= 59) return "D";
+        return "Invalide";
+    }
+
+    static String fizzBuzz(int n) {
+        if (n % 15 == 0) return "FizzBuzz";
+        if (n % 3 == 0) return "Fizz";
+        if (n % 5 == 0) return "Buzz";
+        return Integer.toString(n);
+    }
+
+    static String describe(Object x) {
+        if (x == null) return "null";
+        if (x instanceof String) return "String(len=" + ((String)x).length() + ")";
+        if (x instanceof Number) return "Number(" + x + ")";
+        return "Autre(" + x.getClass().getSimpleName() + ")";
+    }
+
+    public static void main(String[] args) {
+        Shape[] shapes = { new Circle(2.0), new Rectangle(3.0, 4.0), new Unknown("?") };
+        for (Shape s : shapes) {
+            System.out.println("area(" + s + ") = " + area(s));
+        }
+
+        System.out.println(java.util.Arrays.toString(new int[]{95, 80, 67, 10, -1})
+                .replaceAll("[\\[\\] ]", ""));
+        System.out.println(java.util.Arrays.asList(95, 80, 67, 10, -1).stream()
+                .map(WhenLike::classifyScore)
+                .toList());
+
+        String fb = java.util.stream.IntStream.rangeClosed(1, 16)
+                .mapToObj(WhenLike::fizzBuzz)
+                .collect(java.util.stream.Collectors.joining(" "));
+        System.out.println(fb);
+
+        System.out.println(describe("kotlin"));
+        System.out.println(describe(42));
+        System.out.println(describe(null));
+    }
+}
+```
+
+### Java 21
+```java
+// package com.ps.java21.s13;
+public class WhenLike21 {
+    sealed interface Shape permits Circle, Rectangle, Unknown {}
+    static final class Circle implements Shape { final double radius; Circle(double r){ this.radius=r; } }
+    static final class Rectangle implements Shape { final double width, height; Rectangle(double w, double h){ this.width=w; this.height=h; } }
+    static final class Unknown implements Shape { final String label; Unknown(String l){ this.label=l; } }
+
+    static double area(Shape s) {
+        return switch (s) {
+            case Circle c -> Math.PI * c.radius * c.radius;
+            case Rectangle r -> r.width * r.height;
+            case Unknown u -> Double.NaN;
+        };
+    }
+
+    static String classifyScore(int score) {
+        return switch (score) {
+            default -> {
+                if (score >= 90 && score <= 100) yield "A";
+                else if (score >= 75 && score <= 89) yield "B";
+                else if (score >= 60 && score <= 74) yield "C";
+                else if (score >= 0 && score <= 59) yield "D";
+                else yield "Invalide";
+            }
+        };
+    }
+
+    static String fizzBuzz(int n) {
+        return switch (0) {
+            default -> {
+                if (n % 15 == 0) yield "FizzBuzz";
+                else if (n % 3 == 0) yield "Fizz";
+                else if (n % 5 == 0) yield "Buzz";
+                else yield Integer.toString(n);
+            }
+        };
+    }
+
+    static String describe(Object x) {
+        return switch (x) {
+            case null -> "null";
+            case String s -> "String(len=" + s.length() + ")";
+            case Number n -> "Number(" + n + ")";
+            default -> "Autre(" + x.getClass().getSimpleName() + ")";
+        };
+    }
+
+    public static void main(String[] args) {
+        Shape[] shapes = { new Circle(2.0), new Rectangle(3.0, 4.0), new Unknown("?") };
+        for (Shape s : shapes) System.out.println("area(" + s + ") = " + area(s));
+
+        System.out.println(java.util.Arrays.asList(95, 80, 67, 10, -1).stream()
+                .map(WhenLike21::classifyScore)
+                .toList());
+
+        String fb = java.util.stream.IntStream.rangeClosed(1, 16)
+                .mapToObj(WhenLike21::fizzBuzz)
+                .collect(java.util.stream.Collectors.joining(" "));
+        System.out.println(fb);
+
+        System.out.println(describe("kotlin"));
+        System.out.println(describe(42));
+        System.out.println(describe(null));
+    }
+}
+```
+
+### Kotlin idiomatique
+```kotlin
+// package com.ps.kotlin.s13
+
+sealed interface Shape
+
+data class Circle(val radius: Double) : Shape
+
+data class Rectangle(val width: Double, val height: Double) : Shape
+
+data class Unknown(val label: String) : Shape
+
+fun area(shape: Shape): Double = when (shape) {
+    is Circle -> Math.PI * shape.radius * shape.radius // smart cast
+    is Rectangle -> shape.width * shape.height
+    is Unknown -> Double.NaN // exhaustif grâce à sealed interface
+}
+
+fun classifyScore(score: Int): String = when (score) {
+    in 90..100 -> "A"
+    in 75..89 -> "B"
+    in 60..74 -> "C"
+    in 0..59 -> "D"
+    else -> "Invalide"
+}
+
+fun fizzBuzz(n: Int): String = when {
+    n % 15 == 0 -> "FizzBuzz"
+    n % 3 == 0 -> "Fizz"
+    n % 5 == 0 -> "Buzz"
+    else -> n.toString()
+}
+
+fun describe(x: Any?): String = when (x) {
+    null -> "null"
+    is String -> "String(len=${x.length})"
+    is Number -> "Number($x)"
+    else -> "Autre(${x::class.simpleName})"
+}
+
+fun main() {
+    // 1) when + sealed: exhaustif et expressif
+    val shapes: List<Shape> = listOf(Circle(2.0), Rectangle(3.0, 4.0), Unknown("?"))
+    shapes.forEach { s -> println("area(${s}) = ${area(s)}") }
+
+    // 2) when avec plages
+    println((listOf(95, 80, 67, 10, -1)).map(::classifyScore))
+
+    // 3) when sans sujet: garde booléenne
+    println((1..16).joinToString(" ") { fizzBuzz(it) })
+
+    // 4) when par type
+    println(describe("kotlin"))
+    println(describe(42))
+    println(describe(null))
+}
+```
+
+### Diagramme
+```
++-------------------------+
+|     Contrôle de flux    |
++-------------------------+
+| Kotlin: when (expr)     |
+| Java 21: switch expr    |
+| Java 8: if/else/switch  |
++-------------------------+
+```
+
+### Notes idiomatiques
+- `when` est une expression: retournez directement la valeur calculée.
+- Exploitez les hiérarchies sealed pour l’exhaustivité et la sécurité à la compilation.
+- Préférez des guards lisibles; évitez les cas trop « magiques ».
+
+## 14) Paramètres nommés et valeurs par défaut
+
+Idée clé: en Kotlin, on définit des valeurs par défaut directement dans la signature et on appelle avec des paramètres nommés pour la lisibilité. En Java 8/21, on émule via surcharges et/ou Builder.
+
+### Java 8
+```java
+// package com.ps.java8.s14;
+
+/**
+ * Java 8 n'a ni paramètres nommés ni valeurs par défaut.
+ * On émule:
+ *  - par surcharge de méthodes (telescoping) pour des valeurs par défaut
+ *  - par un Builder fluent pour simuler des "paramètres nommés"
+ */
+public class NamedAndDefaultParams {
+
+    // --- Exemple 1: valeurs par défaut via surcharge ---
+    public static String greet(String name) {
+        return greet(name, "!", "Hello");
+    }
+
+    public static String greet(String name, String punctuation) {
+        return greet(name, punctuation, "Hello");
+    }
+
+    public static String greet(String name, String punctuation, String prefix) {
+        return prefix + " " + name + punctuation;
+    }
+
+    // --- Exemple 2: "paramètres nommés" via Builder ---
+    public static final class Mail {
+        private final String to;
+        private final String subject;
+        private final String body;
+        private final boolean urgent;
+
+        private Mail(Builder b) {
+            this.to = b.to;
+            this.subject = b.subject;
+            this.body = b.body;
+            this.urgent = b.urgent;
+        }
+
+        public String summary() {
+            return "to=" + to + "; subj=" + subject + "; urgent=" + urgent;
+        }
+
+        public static final class Builder {
+            private String to;                     // requis
+            private String subject = "(no subject)"; // défaut
+            private String body = "";               // défaut
+            private boolean urgent = false;         // défaut
+
+            public Builder to(String to) { this.to = to; return this; }
+            public Builder subject(String subject) { this.subject = subject; return this; }
+            public Builder body(String body) { this.body = body; return this; }
+            public Builder urgent(boolean urgent) { this.urgent = urgent; return this; }
+
+            public Mail build() {
+                if (to == null) throw new IllegalStateException("to is required");
+                return new Mail(this);
+                
+            }
+        }
+    }
+
+    public static void main(String[] args) {
+        // Surcharges pour valeurs par défaut
+        System.out.println(greet("Alice"));          // Hello Alice!
+        System.out.println(greet("Bob", "?"));      // Hello Bob?
+        System.out.println(greet("Charly", "!", "Hi")); // Hi Charly!
+
+        // Builder pour paramètres "nommés"
+        Mail m1 = new Mail.Builder()
+                .to("team@example.com")
+                .build();
+        Mail m2 = new Mail.Builder()
+                .to("boss@example.com")
+                .subject("Weekly report")
+                .urgent(true)
+                .build();
+        System.out.println(m1.summary());
+        System.out.println(m2.summary());
+    }
+}
+```
+
+### Java 21
+```java
+// package com.ps.java21.s14;
+
+/**
+ * Java 21 ne propose pas de paramètres nommés, ni de valeurs par défaut
+ * sur les paramètres. Les patterns restent similaires à Java 8, mais
+ * les records simplifient les DTO, et on peut fournir des usines statiques.
+ */
+public class NamedAndDefaultParams21 {
+
+    // --- Valeurs par défaut via surcharge (approche simple et directe) ---
+    public static String greet(String name) {
+        return greet(name, "!", "Hello");
+    }
+
+    public static String greet(String name, String punctuation) {
+        return greet(name, punctuation, "Hello");
+    }
+
+    public static String greet(String name, String punctuation, String prefix) {
+        return prefix + " " + name + punctuation;
+    }
+
+    // --- "Paramètres nommés" via Builder, avec Record pour le DTO ---
+    public record Mail(String to, String subject, String body, boolean urgent) {
+        public String summary() { return "to=" + to + "; subj=" + subject + "; urgent=" + urgent; }
+
+        public static Builder builder() { return new Builder(); }
+
+        public static final class Builder {
+            private String to;                         // requis
+            private String subject = "(no subject)";   // défaut
+            private String body = "";                  // défaut
+            private boolean urgent = false;            // défaut
+
+            public Builder to(String to) { this.to = to; return this; }
+            public Builder subject(String subject) { this.subject = subject; return this; }
+            public Builder body(String body) { this.body = body; return this; }
+            public Builder urgent(boolean urgent) { this.urgent = urgent; return this; }
+            public Mail build() {
+                if (to == null) throw new IllegalStateException("to is required");
+                return new Mail(to, subject, body, urgent);
+            }
+        }
+
+        // Usines pratiques, jouant le rôle de valeurs par défaut
+        public static Mail of(String to) { return new Mail(to, "(no subject)", "", false); }
+        public static Mail of(String to, String subject) { return new Mail(to, subject, "", false); }
+    }
+
+    public static void main(String[] args) {
+        System.out.println(greet("Alice"));
+        System.out.println(greet("Bob", "?"));
+        System.out.println(greet("Charly", "!", "Hi"));
+
+        Mail m1 = Mail.of("team@example.com");
+        Mail m2 = Mail.builder().to("boss@example.com").subject("Weekly report").urgent(true).build();
+        System.out.println(m1.summary());
+        System.out.println(m2.summary());
+    }
+}
+```
+
+### Kotlin idiomatique
+```kotlin
+// package com.ps.kotlin.s14
+
+data class Mail(
+    val to: String,
+    val subject: String = "(no subject)",
+    val body: String = "",
+    val urgent: Boolean = false
+)
+
+fun sendMail(mail: Mail): String {
+    // Ici on retournerait un ID ou on enverrait réellement le mail.
+    return "to=${mail.to}; subj=${mail.subject}; urgent=${mail.urgent}"
+}
+
+// Variante avec défauts directement dans la signature de fonction
+fun greet(name: String, punctuation: String = "!", prefix: String = "Hello"): String = "$prefix $name$punctuation"
+
+fun main() {
+    // 1) Appels classiques (positionnels)
+    println(greet("Alice"))                  // Hello Alice!
+    println(greet("Bob", "?"))              // Hello Bob?
+
+    // 2) Paramètres nommés: on peut changer l'ordre, expliciter, et sauter des valeurs
+    println(greet(name = "Charly", prefix = "Hi"))      // Hi Charly!
+    println(greet(punctuation = "!!!", name = "Dana"))   // Hello Dana!!!
+
+    // 3) Objet avec valeurs par défaut + paramètres nommés
+    val m1 = Mail(to = "team@example.com")
+    val m2 = Mail(to = "boss@example.com", subject = "Weekly report", urgent = true)
+    println(sendMail(m1))
+    println(sendMail(m2))
+}
+```
+
+### Notes idiomatiques
+- Préférer les paramètres nommés pour améliorer la lisibilité quand plusieurs booléens/strings se suivent.
+- Éviter d’abuser des valeurs par défaut si elles masquent un besoin métier explicite; documenter-les.
+- En Java, privilégier les Builders (immutables) pour éviter l’ambiguïté et conserver l’intention.
